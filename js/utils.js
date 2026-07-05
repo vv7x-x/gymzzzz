@@ -337,3 +337,18 @@ export function safeAsync(fn, fallback) {
     }
   };
 }
+
+export const GENDER_CLASS_MAP = {
+  female: 'female',
+  male: 'male',
+};
+
+export function getMemberCardClass(member) {
+  const key = (member.gender || '').toLowerCase();
+  return GENDER_CLASS_MAP[key] || 'male';
+}
+
+export function getGenderIcon(gender) {
+  const g = (gender || '').toLowerCase();
+  return g === 'female' ? 'bi-gender-female' : 'bi-gender-male';
+}

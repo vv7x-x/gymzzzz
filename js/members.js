@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { getSubscriptionStatus, formatDate, calculateDaysRemaining, deletePhoto, getMemberPhotoUrl, sanitize, showToast, showConfirm } from './utils.js';
+import { getSubscriptionStatus, formatDate, calculateDaysRemaining, deletePhoto, getMemberPhotoUrl, sanitize, showToast, showConfirm, getMemberCardClass, getGenderIcon } from './utils.js';
 
 let allMembers = [];
 
@@ -43,21 +43,24 @@ export function renderMembers(members) {
     const status = getSubscriptionStatus(m.end_date);
     const days = calculateDaysRemaining(m.end_date);
     const photo = getMemberPhotoUrl(m.photo_url);
-    const initials = m.full_name
-      ? m.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-      : '?';
     const isActive = status === 'active';
     const statusLabel = isActive
       ? `${days} day${days !== 1 ? 's' : ''} left`
       : 'Expired';
+    const genderClass = getMemberCardClass(m);
+    const hasPhoto = !!m.photo_url;
+    const genderIcon = getGenderIcon(m.gender);
 
     return `
-      <div class="member-card anim-fade-up" style="animation-delay:${i * 0.05}s">
+      <div class="member-card ${genderClass} anim-fade-up" style="animation-delay:${i * 0.05}s">
         <div class="member-card-top">
-          <img src="${sanitize(photo)}"
-               alt="${sanitize(m.full_name)}"
-               loading="lazy"
-               onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.full_name || 'U')}&background=1e3a5f&color=fff&size=80'">
+          ${hasPhoto
+            ? `<img src="${sanitize(photo)}"
+                  alt="${sanitize(m.full_name)}"
+                  loading="lazy"
+                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+               <div class="member-card-avatar-fallback" style="display:none"><i class="bi ${genderIcon}"></i></div>`
+            : `<div class="member-card-avatar-fallback"><i class="bi ${genderIcon}"></i></div>`}
           <div class="member-card-info">
             <h4><a href="member.html?id=${encodeURIComponent(m.id)}" style="color:var(--text-primary)">${sanitize(m.full_name)}</a></h4>
             <span>${sanitize(m.member_id || '')}</span>
