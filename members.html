@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Members — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header"><div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div><span class="logo-text">GYMOS</span></div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <h2>Members</h2>
+        </div>
+        <div class="topbar-right"></div>
+      </header>
+      <div class="page-content">
+        <div class="page-header">
+          <h1 data-i18n="members.title">Members</h1>
+          <p data-i18n="members.subtitle">Manage your gym members</p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-wrapper">
+            <i class="bi bi-search"></i>
+            <input type="text" class="form-control" id="searchInput" placeholder="Search members...">
+          </div>
+          <select class="form-control" id="statusFilter">
+            <option value="all" data-i18n="members.all">All Status</option>
+            <option value="active">Active</option>
+            <option value="expiring_soon">Expiring Soon</option>
+            <option value="expired">Expired</option>
+          </select>
+          <a href="add-member.html" class="btn btn-primary"><i class="bi bi-person-plus"></i> <span data-i18n="members.add">Add Member</span></a>
+        </div>
+
+        <div id="membersContainer"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth } from './js/auth.js';
+    import { renderSidebar, initTopbar, pageTransition, skeletonLoader } from './js/ui.js';
+    import { sanitize, formatDate, formatCurrency, getSubscriptionStatus, getStatusLabel, getStatusBadgeClass, calculateDaysRemaining, getMemberPhotoUrl, showConfirm, showToast, debounce } from './js/utils.js';
+    import { applyLang, t } from './js/i18n.js';
+
+    const user = await requireAuth();
+    applyLang();
+    renderSidebar('members');
+    initTopbar(t('members.title'));
+    pageTransition();
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+
+    const membersContainer = document.getElementById('membersContainer');
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+
+    let allMembers = [];
+    let allSubscriptions = [];
+    let planMap = {};
+    let currentPage = 1;
+    const perPage = 12;
+
+    async function loadData() {
+      skeletonLoader(membersContainer, 6, 'card');
+      const { data: members, error: mErr } = await supabase.from('members').select('*').order('created_at', { ascending: false });
+      if (mErr) { showToast('Error loading members', 'error'); return; }
+      const { data: subs, error: sErr } = await supabase.from('subscriptions').select('*');
+      if (sErr) { showToast('Error loading subscriptions', 'error'); return; }
+      const { data: plans } = await supabase.from('plans').select('id, name');
+      (plans || []).forEach(p => { planMap[p.id] = p.name; });
+      allMembers = members || [];
+      allSubscriptions = subs || [];
+      renderMembers();
+    }
+
+    function getMemberStatus(memberId) {
+      const sub = allSubscriptions.find(s => s.member_id === memberId);
+      if (!sub) return 'expired';
+      return sub.status;
+    }
+
+    function renderMembers() {
+      const query = searchInput.value.toLowerCase().trim();
+      const status = statusFilter.value;
+
+      let filtered = [...allMembers];
+
+      if (query) {
+        filtered = filtered.filter(m =>
+          m.full_name.toLowerCase().includes(query) ||
+          (m.member_id || '').toLowerCase().includes(query) ||
+          (m.phone || '').toLowerCase().includes(query)
+        );
+      }
+
+      if (status !== 'all') {
+        filtered = filtered.filter(m => getMemberStatus(m.id) === status);
+      }
+
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / perPage);
+      if (currentPage > totalPages) currentPage = 1;
+      const start = (currentPage - 1) * perPage;
+      const page = filtered.slice(start, start + perPage);
+
+      if (total === 0) {
+        membersContainer.innerHTML = `
+          <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <h3>${t('members.noFound')}</h3>
+            <p>${query ? t('members.trySearch') : t('members.addFirst')}</p>
+            ${!query ? '<a href="add-member.html" class="btn btn-primary"><i class="bi bi-person-plus"></i> ' + t('members.add') + '</a>' : ''}
+          </div>`;
+        return;
+      }
+
+      membersContainer.innerHTML = `
+        <p style="font-size:var(--text-sm);color:var(--text-muted);margin-bottom:var(--space-4)">${total} member${total !== 1 ? 's' : ''} found</p>
+        <div class="members-grid" id="membersGrid">
+          ${page.map(m => {
+            const sub = allSubscriptions.find(s => s.member_id === m.id);
+            const status2 = sub ? sub.status : 'expired';
+            const label = getStatusLabel(status2);
+            const badgeClass = getStatusBadgeClass(status2);
+            const daysLeft = sub ? calculateDaysRemaining(sub.end_date) : 0;
+            const name = sanitize(m.full_name || '');
+            const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+            const photoUrl = m.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.full_name || 'U')}&background=1e3a5f&color=fff&size=80`;
+            return `
+              <div class="member-card">
+                <div class="member-card-top">
+                  <img src="${sanitize(photoUrl)}" alt="${name}" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?name=${initials}&background=1e3a5f&color=fff&size=80'">
+                  <div class="member-card-info">
+                    <h4><a href="member.html?id=${encodeURIComponent(m.id)}" style="color:var(--text-primary)">${name}</a></h4>
+                    <span>${sanitize(m.member_id || '')}</span>
+                  </div>
+                  <span class="badge ${badgeClass}">${label}</span>
+                </div>
+                <div class="member-card-body">
+                  <div class="member-card-row"><span class="label">${t('members.phone')}</span><span class="value">${sanitize(m.phone) || '-'}</span></div>
+                  <div class="member-card-row"><span class="label">${t('members.age')}</span><span class="value">${m.age || '-'}</span></div>
+                  <div class="member-card-row"><span class="label">${t('members.plan')}</span><span class="value">${sub ? sanitize(planMap[sub.plan_id] || 'N/A') : t('members.noPlan')}</span></div>
+                  <div class="member-card-row"><span class="label">${t('members.endDate')}</span><span class="value">${sub ? formatDate(sub.end_date) : '-'}</span></div>
+                  ${daysLeft > 0 ? `<div class="member-card-row"><span class="label">${t('members.daysLeft')}</span><span class="value">${daysLeft}</span></div>` : ''}
+                </div>
+                <div class="member-card-actions">
+                  <a href="member.html?id=${encodeURIComponent(m.id)}" class="btn btn-sm btn-ghost"><i class="bi bi-eye"></i> ${t('common.view')}</a>
+                  <a href="edit-member.html?id=${encodeURIComponent(m.id)}" class="btn btn-sm btn-ghost"><i class="bi bi-pencil"></i> ${t('common.edit')}</a>
+                  <button class="btn btn-sm btn-ghost" data-delete="${m.id}" style="color:var(--danger)"><i class="bi bi-trash"></i></button>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+        ${totalPages > 1 ? `
+          <div class="pagination">
+            <button class="pagination-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>
+            ${Array.from({length: totalPages}, (_, i) => i + 1).map(p =>
+              `<button class="pagination-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`
+            ).join('')}
+            <button class="pagination-btn" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>
+          </div>` : ''}`;
+
+      document.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.delete;
+          const confirmed = await showConfirm(t('members.deleteConfirm'), t('members.deleteMsg'));
+          if (confirmed) {
+            const { error } = await supabase.from('subscriptions').delete().eq('member_id', id);
+            await supabase.from('payments').delete().eq('member_id', id);
+            const { error: mErr } = await supabase.from('members').delete().eq('id', id);
+            if (mErr) { showToast('Error deleting member', 'error'); } else { showToast('Member deleted'); loadData(); }
+          }
+        });
+      });
+
+      document.querySelectorAll('.pagination-btn[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const page = parseInt(btn.dataset.page);
+          if (page >= 1 && page <= totalPages) { currentPage = page; renderMembers(); }
+        });
+      });
+    }
+
+    searchInput.addEventListener('input', debounce(() => { currentPage = 1; renderMembers(); }, 300));
+    statusFilter.addEventListener('change', () => { currentPage = 1; renderMembers(); });
+
+    loadData();
+  </script>
+</body>
+</html>

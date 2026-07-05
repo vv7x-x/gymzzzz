@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header"><div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div><span class="logo-text">GYMOS</span></div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <h2>Settings</h2>
+        </div>
+        <div class="topbar-right"></div>
+      </header>
+      <div class="page-content">
+        <div class="page-header">
+          <h1 data-i18n="settings.title">Settings</h1>
+          <p data-i18n="settings.subtitle">Configure your gym and application preferences</p>
+        </div>
+
+        <div class="settings-section">
+          <h3 data-i18n="settings.general">Gym Information</h3>
+          <p>Update your gym's profile information.</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label data-i18n="settings.gymName">Gym Name</label>
+              <input type="text" class="form-control" id="gymName" placeholder="GYMOS">
+            </div>
+            <div class="form-group">
+              <label data-i18n="settings.currency">Currency</label>
+              <select class="form-control" id="gymCurrency">
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="EGP">EGP (E£)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label data-i18n="settings.phone">Phone</label>
+              <input type="tel" class="form-control" id="gymPhone" placeholder="+1 (555) 000-0000">
+            </div>
+            <div class="form-group">
+              <label data-i18n="settings.address">Address</label>
+              <input type="text" class="form-control" id="gymAddress" placeholder="123 Fitness Street">
+            </div>
+          </div>
+          <button class="btn btn-primary" id="saveSettings"><i class="bi bi-check-lg"></i> <span data-i18n="settings.save">Save Settings</span></button>
+        </div>
+
+        <div class="settings-section">
+          <h3 data-i18n="settings.appearance">Appearance</h3>
+          <p>Customize the look and feel.</p>
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <label style="display:block;font-size:var(--text-sm);font-weight:600;color:var(--text-secondary);margin-bottom:8px">Theme</label>
+              <div style="display:flex;gap:12px">
+                <button class="btn theme-option btn-outline" data-theme="dark" style="flex:1;justify-content:center">
+                  <i class="bi bi-moon"></i> Dark
+                </button>
+                <button class="btn theme-option btn-outline" data-theme="light" style="flex:1;justify-content:center">
+                  <i class="bi bi-sun"></i> Light
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3 data-i18n="settings.account">Account</h3>
+          <p>Manage your account.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-outline" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> <span data-i18n="settings.signOut">Sign Out</span></button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth, signOut } from './js/auth.js';
+    import { renderSidebar, initTopbar, pageTransition } from './js/ui.js';
+    import { showToast } from './js/utils.js';
+    import { applyLang, t } from './js/i18n.js';
+    import { getTheme, setTheme } from './js/prefs.js';
+
+    const user = await requireAuth();
+    applyLang();
+    renderSidebar('settings');
+    initTopbar(t('settings.title'));
+    pageTransition();
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    const currentTheme = getTheme();
+    document.querySelectorAll('.theme-option').forEach(b => {
+      b.className = `btn ${b.dataset.theme === currentTheme ? 'btn-primary' : 'btn-outline'}`;
+    });
+
+    async function loadSettings() {
+      try {
+        const { data } = await supabase.from('settings').select('*').limit(1).maybeSingle();
+        if (data) {
+          document.getElementById('gymName').value = data.gym_name || '';
+          document.getElementById('gymCurrency').value = data.currency || 'USD';
+          document.getElementById('gymPhone').value = data.gym_phone || '';
+          document.getElementById('gymAddress').value = data.gym_address || '';
+        }
+      } catch (e) {
+        // settings table may not exist yet
+      }
+    }
+
+    document.getElementById('saveSettings').addEventListener('click', async () => {
+      const data = {
+        gym_name: document.getElementById('gymName').value.trim(),
+        currency: document.getElementById('gymCurrency').value,
+        gym_phone: document.getElementById('gymPhone').value.trim(),
+        gym_address: document.getElementById('gymAddress').value.trim()
+      };
+
+      let existing;
+      try {
+        const { data } = await supabase.from('settings').select('id').limit(1).maybeSingle();
+        existing = data;
+      } catch (e) {
+        existing = null;
+      }
+      try {
+        if (existing) {
+          await supabase.from('settings').update(data).eq('id', existing.id);
+        } else {
+          await supabase.from('settings').insert(data);
+        }
+        showToast('Settings saved successfully');
+      } catch (err) {
+        showToast(err.message || 'Error saving settings', 'error');
+      }
+    });
+
+    document.querySelectorAll('.theme-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        setTheme(theme);
+        document.querySelectorAll('.theme-option').forEach(b => {
+          b.className = `btn ${b.dataset.theme === theme ? 'btn-primary' : 'btn-outline'}`;
+        });
+        showToast(`Switched to ${theme} mode`);
+      });
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut();
+      window.location.href = 'login.html';
+    });
+
+    loadSettings();
+  </script>
+</body>
+</html>

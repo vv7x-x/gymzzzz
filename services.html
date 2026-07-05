@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Services — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header"><div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div><span class="logo-text">GYMOS</span></div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <h2>Services</h2>
+        </div>
+        <div class="topbar-right"></div>
+      </header>
+      <div class="page-content">
+        <div class="page-header">
+          <h1 data-i18n="services.title">Extra Services</h1>
+          <p data-i18n="services.subtitle">Manage add-on services for members</p>
+        </div>
+
+        <div class="flex gap-3 mb-6 flex-wrap">
+          <button class="btn btn-primary" id="addServiceBtn"><i class="bi bi-plus-lg"></i> <span data-i18n="services.add">Add Service</span></button>
+        </div>
+
+        <div id="servicesContainer"><p class="text-muted">Loading...</p></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth } from './js/auth.js';
+    import { renderSidebar, initTopbar, pageTransition } from './js/ui.js';
+    import { sanitize, formatCurrency, showConfirm, showToast, showModal } from './js/utils.js';
+    import { applyLang, t } from './js/i18n.js';
+
+    const user = await requireAuth();
+    applyLang();
+    renderSidebar('services');
+    initTopbar(t('services.title'));
+    pageTransition();
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+
+    const container = document.getElementById('servicesContainer');
+
+    async function loadServices() {
+      const { data: services, error } = await supabase.from('services').select('*').order('price');
+      if (error) { container.innerHTML = '<p class="text-danger">Error loading services</p>'; return; }
+      if (!services || services.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-gear"></i><h3>No services yet</h3><p>Create extra services like Personal Trainer, Locker, etc.</p></div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="services-grid">
+          ${services.map(s => {
+            const name = sanitize(s.name);
+            const desc = s.description ? sanitize(s.description) : '';
+            return `
+            <div class="card">
+              <div class="flex items-center justify-between" style="margin-bottom:var(--space-3)">
+                <h3 style="font-size:var(--text-base);font-weight:700">${name}</h3>
+                <span style="font-size:var(--text-xl);font-weight:700;color:var(--primary)">${formatCurrency(s.price)}</span>
+              </div>
+              ${desc ? `<p style="font-size:var(--text-sm);color:var(--text-muted);flex:1;margin-bottom:var(--space-4)">${desc}</p>` : '<div style="flex:1"></div>'}
+              <div class="flex gap-2" style="margin-top:var(--space-3)">
+                <button class="btn btn-sm btn-ghost edit-service" data-id="${s.id}" style="flex:1"><i class="bi bi-pencil"></i> ${t('common.edit')}</button>
+                <button class="btn btn-sm btn-ghost delete-service" data-id="${s.id}" style="color:var(--danger);flex:1"><i class="bi bi-trash"></i></button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+
+      document.querySelectorAll('.edit-service').forEach(btn => {
+        btn.addEventListener('click', () => showServiceForm(services.find(s => s.id === btn.dataset.id)));
+      });
+      document.querySelectorAll('.delete-service').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const confirmed = await showConfirm(t('services.deleteConfirm'), t('services.deleteMsg'));
+          if (confirmed) {
+            await supabase.from('services').delete().eq('id', btn.dataset.id);
+            showToast('Service deleted');
+            loadServices();
+          }
+        });
+      });
+    }
+
+    function showServiceForm(service = null) {
+      const isEdit = !!service;
+      const svcName = service?.name ? sanitize(service.name) : '';
+      const svcPrice = service?.price || '';
+      const svcDesc = service?.description ? sanitize(service.description) : '';
+      const html = `
+        <form id="serviceForm">
+          <div class="form-group">
+            <label>${t('services.name')} <span class="required">*</span></label>
+            <input type="text" class="form-control" id="svcName" required value="${svcName}" placeholder="e.g. Personal Trainer">
+          </div>
+          <div class="form-group">
+            <label>${t('services.price')} <span class="required">*</span></label>
+            <input type="number" class="form-control" id="svcPrice" required min="0" step="0.01" value="${svcPrice}" placeholder="29.99">
+          </div>
+          <div class="form-group">
+            <label>${t('services.description')}</label>
+            <textarea class="form-control" id="svcDescription" rows="2" placeholder="Describe this service...">${svcDesc}</textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full"><i class="bi bi-check-lg"></i> ${isEdit ? t('services.update') : t('services.create')}</button>
+        </form>`;
+
+      const { close } = showModal(isEdit ? t('services.edit') : t('services.add'), html);
+
+      document.getElementById('serviceForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+          name: document.getElementById('svcName').value.trim(),
+          price: parseFloat(document.getElementById('svcPrice').value),
+          description: document.getElementById('svcDescription').value.trim() || null
+        };
+
+        try {
+          if (isEdit) {
+            await supabase.from('services').update(data).eq('id', service.id);
+            showToast('Service updated');
+          } else {
+            await supabase.from('services').insert(data);
+            showToast('Service created');
+          }
+          close();
+          loadServices();
+        } catch (err) {
+          showToast(err.message || 'Error saving service', 'error');
+        }
+      });
+    }
+
+    document.getElementById('addServiceBtn').addEventListener('click', () => showServiceForm());
+    loadServices();
+  </script>
+</body>
+</html>

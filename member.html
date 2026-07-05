@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Member Profile — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header"><div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div><span class="logo-text">GYMOS</span></div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <h2>Member Profile</h2>
+        </div>
+        <div class="topbar-right"></div>
+      </header>
+      <div class="page-content">
+        <div id="profileContainer" style="text-align:center;padding:40px">
+          <p class="text-muted">Loading...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth } from './js/auth.js';
+    import { renderSidebar, initTopbar, pageTransition } from './js/ui.js';
+    import { sanitize, formatDate, formatCurrency, getStatusLabel, getStatusBadgeClass, calculateDaysRemaining, showToast } from './js/utils.js';
+    import { applyLang, t } from './js/i18n.js';
+
+    (async () => {
+      const user = await requireAuth();
+      applyLang();
+      renderSidebar('members');
+      initTopbar(t('member.title'));
+      pageTransition();
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+
+      const params = new URLSearchParams(window.location.search);
+      const memberId = params.get('id');
+
+      if (!memberId) {
+        document.getElementById('profileContainer').innerHTML = '<p class="text-danger">No member ID provided</p>';
+        return;
+      }
+
+      const { data: member, error: mErr } = await supabase.from('members').select('*').eq('id', memberId).single();
+      if (mErr || !member) {
+        document.getElementById('profileContainer').innerHTML = '<p class="text-danger">Member not found</p>';
+        return;
+      }
+
+    const { data: subscriptions } = await supabase.from('subscriptions').select('*').eq('member_id', memberId).order('created_at', { ascending: false });
+    const { data: payments } = await supabase.from('payments').select('*').eq('member_id', memberId).order('created_at', { ascending: false });
+    const { data: services } = await supabase.from('services').select('*');
+    const { data: plansList } = await supabase.from('plans').select('id, name');
+    const planMap = {};
+    (plansList || []).forEach(p => { planMap[p.id] = p.name; });
+
+    const currentSub = subscriptions?.[0];
+    let assignedServices = [];
+    if (currentSub) {
+      const { data: sas } = await supabase.from('service_assignments').select('*, services:service_id(*)').eq('subscription_id', currentSub.id);
+      assignedServices = sas || [];
+    }
+
+    const status = currentSub ? currentSub.status : 'expired';
+    const badgeClass = getStatusBadgeClass(status);
+    const statusLabel = getStatusLabel(status);
+    const daysLeft = currentSub ? calculateDaysRemaining(currentSub.end_date) : 0;
+    const initials = member.full_name ? member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+
+    const container = document.getElementById('profileContainer');
+    container.innerHTML = `
+      <div class="profile-container">
+        <div class="profile-card">
+          <div class="profile-cover"></div>
+          <div class="profile-header">
+            <div class="profile-photo">
+              ${member.photo_url
+                ? `<img src="${sanitize(member.photo_url)}" alt="${sanitize(member.full_name)}">`
+                : `<div class="profile-photo-fallback">${initials}</div>`}
+            </div>
+            <div class="profile-heading">
+              <h1>${sanitize(member.full_name)}</h1>
+              <div class="member-id">${sanitize(member.member_id || '')}</div>
+              <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                <span class="badge ${badgeClass} badge-lg">${statusLabel}</span>
+                ${daysLeft > 0 ? `<span class="badge badge-info badge-lg">${daysLeft} day${daysLeft !== 1 ? 's' : ''} left</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-body">
+            <div class="profile-info-grid">
+              <div class="profile-info-item"><span class="label">${t('members.age')}</span><span class="value">${member.age || '-'}</span></div>
+              <div class="profile-info-item"><span class="label">${t('members.phone')}</span><span class="value">${sanitize(member.phone) || '-'}</span></div>
+              <div class="profile-info-item"><span class="label">${t('addMember.gender')}</span><span class="value">${sanitize(member.gender) || '-'}</span></div>
+              <div class="profile-info-item"><span class="label">${t('addMember.weight')}</span><span class="value">${member.weight ? member.weight + ' kg' : '-'}</span></div>
+              <div class="profile-info-item"><span class="label">${t('addMember.height')}</span><span class="value">${member.height ? member.height + ' cm' : '-'}</span></div>
+              <div class="profile-info-item"><span class="label">${t('member.memberSince')}</span><span class="value">${formatDate(member.created_at)}</span></div>
+            </div>
+
+            ${currentSub ? `
+              <div class="profile-section">
+                <h3><i class="bi bi-boxes"></i> ${t('member.subscription')}</h3>
+                <div class="profile-info-grid">
+                  <div class="profile-info-item"><span class="label">${t('members.plan')}</span><span class="value">${sanitize(planMap[currentSub.plan_id] || currentSub.plan_id || '-')}</span></div>
+                  <div class="profile-info-item"><span class="label">${t('member.startDate')}</span><span class="value">${formatDate(currentSub.start_date)}</span></div>
+                  <div class="profile-info-item"><span class="label">${t('members.endDate')}</span><span class="value">${formatDate(currentSub.end_date)}</span></div>
+                  <div class="profile-info-item"><span class="label">${t('member.planPrice')}</span><span class="value">${formatCurrency(currentSub.plan_price)}</span></div>
+                  <div class="profile-info-item"><span class="label">${t('member.services')}</span><span class="value">${formatCurrency(currentSub.services_price)}</span></div>
+                  <div class="profile-info-item"><span class="label">${t('member.totalPaid')}</span><span class="value" style="color:var(--primary)">${formatCurrency(currentSub.total_price)}</span></div>
+                </div>
+              </div>` : ''}
+
+            ${assignedServices.length > 0 ? `
+              <div class="profile-section">
+                <h3><i class="bi bi-gear"></i> ${t('member.extraServices')}</h3>
+                <div class="service-tokens">
+                  ${assignedServices.map(sa => `
+                    <span class="service-token"><i class="bi bi-check-circle"></i> ${sanitize(sa.services?.name || 'Service')}</span>
+                  `).join('')}
+                </div>
+              </div>` : ''}
+
+            ${payments && payments.length > 0 ? `
+              <div class="profile-section">
+                <h3><i class="bi bi-currency-dollar"></i> ${t('member.paymentHistory')}</h3>
+                <div class="table-container">
+                  <div class="table-wrapper">
+                    <table class="table">
+                      <thead><tr><th>${t('member.date')}</th><th>${t('member.amount')}</th><th>${t('member.type')}</th><th>${t('member.method')}</th></tr></thead>
+                      <tbody>
+                        ${payments.slice(0, 10).map(p => `
+                          <tr>
+                            <td>${formatDate(p.paid_at)}</td>
+                            <td style="font-weight:600">${formatCurrency(p.amount)}</td>
+                            <td>${sanitize(p.payment_type)}</td>
+                            <td>${sanitize(p.payment_method) || '-'}</td>
+                          </tr>`).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>` : ''}
+
+            ${member.notes ? `
+              <div class="profile-section">
+                <h3><i class="bi bi-sticky"></i> ${t('member.notes')}</h3>
+                <p style="font-size:var(--text-sm);color:var(--text-secondary);background:var(--bg-hover);padding:16px;border-radius:var(--radius-sm);border:1px solid var(--border)">${sanitize(member.notes)}</p>
+              </div>` : ''}
+
+            <div class="profile-section">
+              <h3><i class="bi bi-qr-code"></i> ${t('scan.title')}</h3>
+              <div class="qr-display" id="qrContainer"></div>
+              <div class="qr-actions">
+                <button class="btn btn-outline btn-sm" id="downloadQR"><i class="bi bi-download"></i> Download</button>
+                <button class="btn btn-outline btn-sm" id="printCard"><i class="bi bi-printer"></i> Print Card</button>
+              </div>
+            </div>
+
+            <div class="profile-actions">
+              <a href="edit-member.html?id=${memberId}" class="btn btn-primary"><i class="bi bi-pencil"></i> ${t('member.edit')}</a>
+              ${currentSub ? `<button class="btn btn-success" id="renewBtn"><i class="bi bi-arrow-repeat"></i> ${t('member.renew')}</button>` : ''}
+              <a href="members.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> ${t('member.back')}</a>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // Generate QR Code
+    const qrContainer = document.getElementById('qrContainer');
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(qrContainer, {
+        text: `${window.location.origin}${window.location.pathname.replace('member.html', 'member.html')}?id=${memberId}`,
+        width: 180,
+        height: 180,
+        colorDark: '#ffffff',
+        colorLight: '#000000',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+
+    document.getElementById('downloadQR')?.addEventListener('click', () => {
+      const canvas = qrContainer.querySelector('canvas');
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = `qrcode-${member.member_id || memberId}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    });
+
+    document.getElementById('printCard')?.addEventListener('click', () => {
+      const qrCanvas = qrContainer.querySelector('canvas');
+      if (!qrCanvas) return;
+      const qrDataUrl = qrCanvas.toDataURL('image/png');
+      const photoUrl = member.photo_url || '';
+      const planName = currentSub ? (planMap[currentSub.plan_id] || currentSub.plan_id || '-') : '-';
+      const endDate = currentSub ? formatDate(currentSub.end_date) : '-';
+      const win = window.open('', '_blank');
+      win.document.write(`<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Membership Card</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
+  .card { width: 340px; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+  .card-header { background: linear-gradient(135deg, #6c5ce7, #a29bfe); padding: 24px 20px; text-align: center; color: #fff; }
+  .card-header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: 1px; }
+  .card-header p { font-size: 0.7rem; opacity: 0.85; margin-top: 2px; }
+  .card-body { padding: 20px; display: flex; align-items: center; gap: 16px; }
+  .card-photo { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 3px solid #6c5ce7; }
+  .card-photo-fallback { width: 72px; height: 72px; border-radius: 50%; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #999; flex-shrink: 0; border: 3px solid #6c5ce7; }
+  .card-info { flex: 1; }
+  .card-info h2 { font-size: 1.2rem; font-weight: 700; color: #222; }
+  .card-info .id { font-size: 0.75rem; color: #888; margin-top: 1px; }
+  .card-info .plan { font-size: 0.85rem; color: #6c5ce7; font-weight: 600; margin-top: 4px; }
+  .card-info .expiry { font-size: 0.75rem; color: #999; margin-top: 2px; }
+  .card-qr { padding: 0 20px 20px; display: flex; justify-content: center; }
+  .card-qr img { width: 120px; height: 120px; }
+  @media print {
+    body { background: #fff; }
+    .card { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+  }
+</style></head>
+<body>
+<div class="card">
+  <div class="card-header">
+    <h1>GYMOS</h1>
+    <p>Membership Card</p>
+  </div>
+  <div class="card-body">
+    ${photoUrl ? `<img src="${photoUrl}" alt="" class="card-photo">` : `<div class="card-photo-fallback">${initials}</div>`}
+    <div class="card-info">
+      <h2>${sanitize(member.full_name)}</h2>
+      <div class="id">${sanitize(member.member_id || '')}</div>
+      <div class="plan">${sanitize(planName)}</div>
+      <div class="expiry">Expires: ${endDate}</div>
+    </div>
+  </div>
+  <div class="card-qr">
+    <img src="${qrDataUrl}" alt="QR Code">
+  </div>
+</div>
+<scr${'ipt'}>window.onload=function(){window.print();window.close();}</scr${'ipt'}>
+</body>
+</html>`);
+      win.document.close();
+    });
+
+    document.getElementById('renewBtn')?.addEventListener('click', async () => {
+      window.location.href = `add-member.html?renew=${memberId}`;
+    });
+    })();
+  </script>
+</body>
+</html>

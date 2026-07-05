@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Member — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header"><div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div><span class="logo-text">GYMOS</span></div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <h2>Edit Member</h2>
+        </div>
+        <div class="topbar-right"></div>
+      </header>
+      <div class="page-content">
+        <div class="page-header">
+          <h1 data-i18n="editMember.title">Edit Member</h1>
+          <p data-i18n="editMember.subtitle">Update member information</p>
+        </div>
+
+        <div class="card" style="max-width:800px" id="editFormContainer">
+          <p class="text-muted">Loading...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth } from './js/auth.js';
+    import { renderSidebar, initTopbar, pageTransition } from './js/ui.js';
+    import { sanitize, getPhotoFile, uploadPhoto, showToast, showLoading, hideLoading, formatDateISO } from './js/utils.js';
+    import { applyLang, t } from './js/i18n.js';
+
+    (async () => {
+      const user = await requireAuth();
+      applyLang();
+      renderSidebar('members');
+      initTopbar(t('editMember.title'));
+      pageTransition();
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+
+      const params = new URLSearchParams(window.location.search);
+      const memberId = params.get('id');
+
+      if (!memberId) {
+        document.getElementById('editFormContainer').innerHTML = '<p class="text-danger">No member ID provided</p>';
+        return;
+      }
+
+      const { data: member, error: mErr } = await supabase.from('members').select('*').eq('id', memberId).single();
+      if (mErr || !member) {
+        document.getElementById('editFormContainer').innerHTML = '<p class="text-danger">Member not found</p>';
+        return;
+      }
+
+    const { data: plans } = await supabase.from('plans').select('*').eq('is_active', true);
+    const { data: services } = await supabase.from('services').select('*').eq('is_active', true);
+    const { data: subscriptions } = await supabase.from('subscriptions').select('*').eq('member_id', memberId).order('created_at', { ascending: false }).limit(1);
+
+    const currentSub = subscriptions?.[0];
+    const { data: assignedServices } = currentSub ? await supabase.from('service_assignments').select('service_id').eq('subscription_id', currentSub.id) : { data: [] };
+    const assignedIds = new Set((assignedServices || []).map(a => a.service_id));
+
+    const container = document.getElementById('editFormContainer');
+    container.innerHTML = `
+      <form id="editForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>${t('addMember.name')} <span class="required">*</span></label>
+            <input type="text" class="form-control" id="fullName" required value="${sanitize(member.full_name || '')}">
+          </div>
+          <div class="form-group">
+            <label>${t('addMember.age')} <span class="required">*</span></label>
+            <input type="number" class="form-control" id="age" required min="1" max="150" value="${sanitize(String(member.age || ''))}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>${t('addMember.phone')} <span class="required">*</span></label>
+            <input type="tel" class="form-control" id="phone" required value="${sanitize(member.phone || '')}">
+          </div>
+          <div class="form-group">
+            <label>${t('addMember.gender')}</label>
+            <select class="form-control" id="gender">
+              <option value="">${t('common.noData')}</option>
+              <option value="Male" ${sanitize(member.gender) === 'Male' ? 'selected' : ''}>${t('addMember.male')}</option>
+              <option value="Female" ${sanitize(member.gender) === 'Female' ? 'selected' : ''}>${t('addMember.female')}</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>${t('addMember.weight')}</label>
+            <input type="number" class="form-control" id="weight" step="0.1" value="${sanitize(String(member.weight || ''))}">
+          </div>
+          <div class="form-group">
+            <label>${t('addMember.height')}</label>
+            <input type="number" class="form-control" id="height" step="0.1" value="${sanitize(String(member.height || ''))}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>${t('addMember.notes')}</label>
+          <textarea class="form-control" id="notes" rows="2">${sanitize(member.notes || '')}</textarea>
+        </div>
+
+        <hr style="border-color:var(--border);margin:24px 0">
+
+        <div class="form-group">
+          <label>${t('addMember.photo')}</label>
+          <input type="file" class="form-control file-input" id="photo" accept="image/*">
+          <span class="form-hint">Leave empty to keep current photo</span>
+          ${member.photo_url ? `<img src="${member.photo_url}" class="form-photo-preview" style="margin-top:8px">` : ''}
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:24px">
+          <button type="submit" class="btn btn-primary btn-lg" id="saveBtn"><i class="bi bi-check-lg"></i> ${t('common.save')}</button>
+          <a href="member.html?id=${memberId}" class="btn btn-ghost btn-lg"><i class="bi bi-x"></i> ${t('common.cancel')}</a>
+        </div>
+      </form>`;
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveBtn');
+      const original = showLoading(btn, 'Updating...');
+
+      try {
+        let photoUrl = member.photo_url;
+        const photoFile = document.getElementById('photo').files[0];
+        if (photoFile) {
+          const fileCheck = getPhotoFile({ target: { files: [photoFile] } });
+          if (fileCheck) {
+            photoUrl = await uploadPhoto(photoFile);
+          }
+        }
+
+        const { error } = await supabase.from('members').update({
+          full_name: document.getElementById('fullName').value.trim(),
+          age: parseInt(document.getElementById('age').value),
+          phone: document.getElementById('phone').value.trim(),
+          weight: document.getElementById('weight').value ? parseFloat(document.getElementById('weight').value) : null,
+          height: document.getElementById('height').value ? parseFloat(document.getElementById('height').value) : null,
+          gender: document.getElementById('gender').value || null,
+          notes: document.getElementById('notes').value.trim() || null,
+          photo_url: photoUrl
+        }).eq('id', memberId);
+
+        if (error) throw error;
+        showToast('Member updated successfully!');
+        setTimeout(() => { window.location.href = `member.html?id=${memberId}`; }, 500);
+      } catch (err) {
+        showToast(err.message || 'Error updating member', 'error');
+        hideLoading(btn, original);
+      }
+    });
+    })();
+  </script>
+</body>
+</html>

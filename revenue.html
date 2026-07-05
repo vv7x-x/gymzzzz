@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Revenue — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header"><div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div><span class="logo-text">GYMOS</span></div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <h2>Revenue</h2>
+        </div>
+        <div class="topbar-right"></div>
+      </header>
+      <div class="page-content">
+        <div class="page-header">
+          <h1 data-i18n="revenue.title">Revenue</h1>
+          <p data-i18n="revenue.subtitle">Track your gym's financial performance</p>
+        </div>
+
+        <div class="stats-grid" id="revenueCards"></div>
+
+        <div class="dash-grid">
+          <div class="dash-card">
+            <h3><i class="bi bi-graph-up"></i> <span data-i18n="revenue.revenueOverTime">Revenue Over Time</span></h3>
+            <div class="chart-container chart-container-lg">
+              <canvas id="revenueChart"></canvas>
+            </div>
+          </div>
+          <div class="dash-card">
+            <h3><i class="bi bi-pie-chart"></i> <span data-i18n="revenue.revenueByPlan">Revenue by Plan</span></h3>
+            <div class="chart-container chart-container-sm">
+              <canvas id="planRevenueChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-card" style="margin-top:20px">
+          <h3><i class="bi bi-clock-history"></i> <span data-i18n="revenue.recentTransactions">Recent Transactions</span></h3>
+          <div id="recentTransactions"><p class="text-muted">Loading...</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth } from './js/auth.js';
+    import { renderSidebar, initTopbar, pageTransition } from './js/ui.js';
+    import { sanitize, formatDate, formatCurrency, showToast } from './js/utils.js';
+    import { applyLang, t } from './js/i18n.js';
+
+    function getTheme() { return localStorage.getItem('gymos_prefs') ? (JSON.parse(localStorage.getItem('gymos_prefs')).theme || 'dark') : 'dark'; }
+
+    (async () => {
+      const user = await requireAuth();
+      applyLang();
+      renderSidebar('revenue');
+      initTopbar(t('revenue.title'));
+      pageTransition();
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+
+      const { data: payments, error: pErr } = await supabase.from('payments').select('*, members:member_id(full_name)').order('paid_at', { ascending: false });
+      if (pErr) { showToast('Error loading revenue data', 'error'); return; }
+
+    const paymentList = payments || [];
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+    const weekStr = weekStart.toISOString().split('T')[0];
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthStr = monthStart.toISOString().split('T')[0];
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const yearStr = yearStart.toISOString().split('T')[0];
+
+    const todayRev = paymentList.filter(p => p.paid_at === todayStr).reduce((s, p) => s + Number(p.amount), 0);
+    const weekRev = paymentList.filter(p => p.paid_at >= weekStr).reduce((s, p) => s + Number(p.amount), 0);
+    const monthRev = paymentList.filter(p => p.paid_at >= monthStr).reduce((s, p) => s + Number(p.amount), 0);
+    const yearRev = paymentList.filter(p => p.paid_at >= yearStr).reduce((s, p) => s + Number(p.amount), 0);
+    const totalRev = paymentList.reduce((s, p) => s + Number(p.amount), 0);
+
+    document.getElementById('revenueCards').innerHTML = `
+      <div class="stat-card blue">
+        <div class="stat-icon blue"><i class="bi bi-today"></i></div>
+        <div class="stat-info">
+          <div class="stat-number">${formatCurrency(todayRev)}</div>
+          <div class="stat-label" data-i18n="revenue.today">Today's Revenue</div>
+        </div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon green"><i class="bi bi-calendar-week"></i></div>
+        <div class="stat-info">
+          <div class="stat-number">${formatCurrency(weekRev)}</div>
+          <div class="stat-label" data-i18n="revenue.week">This Week</div>
+        </div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-icon yellow"><i class="bi bi-calendar-month"></i></div>
+        <div class="stat-info">
+          <div class="stat-number">${formatCurrency(monthRev)}</div>
+          <div class="stat-label" data-i18n="revenue.month">This Month</div>
+        </div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-icon purple"><i class="bi bi-calendar-year"></i></div>
+        <div class="stat-info">
+          <div class="stat-number">${formatCurrency(yearRev)}</div>
+          <div class="stat-label" data-i18n="revenue.year">This Year</div>
+        </div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-icon red"><i class="bi bi-cash-stack"></i></div>
+        <div class="stat-info">
+          <div class="stat-number">${formatCurrency(totalRev)}</div>
+          <div class="stat-label" data-i18n="revenue.total">Total Revenue</div>
+        </div>
+      </div>
+    `;
+
+    if (window.Chart) {
+      const c = {
+        isDark: getTheme() === 'dark',
+        grid: getTheme() === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+        tick: '#64748b',
+        legend: getTheme() === 'dark' ? '#94a3b8' : '#64748b',
+        primary: '#5B6AF0',
+        primaryBg: 'rgba(91,106,240,0.6)',
+        green: '#25A06E', orange: '#D98A2C', purple: '#7C6FF0', red: '#D94A4A',
+      };
+
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const revenueByMonth = Array(12).fill(0);
+      paymentList.forEach(p => {
+        const d = new Date(p.paid_at);
+        revenueByMonth[d.getMonth()] += Number(p.amount);
+      });
+
+      new Chart(document.getElementById('revenueChart'), {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [{
+            label: 'Revenue',
+            data: revenueByMonth,
+            backgroundColor: c.primaryBg,
+            borderColor: c.primary,
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: c.grid }, ticks: { color: c.tick, font: { size: 11 } } },
+            x: { grid: { display: false }, ticks: { color: c.tick, font: { size: 11 } } }
+          }
+        }
+      });
+
+      const { data: plans } = await supabase.from('plans').select('name');
+      const planRevenue = {};
+      paymentList.forEach(p => {
+        const planName = p.payment_type || 'Other';
+        planRevenue[planName] = (planRevenue[planName] || 0) + Number(p.amount);
+      });
+
+      new Chart(document.getElementById('planRevenueChart'), {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(planRevenue),
+          datasets: [{
+            data: Object.values(planRevenue),
+            backgroundColor: [c.primary, c.green, c.orange, c.purple, c.red],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: c.legend, padding: 12, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    const txnContainer = document.getElementById('recentTransactions');
+    if (paymentList.length === 0) {
+      txnContainer.innerHTML = '<p class="text-muted">No transactions yet</p>';
+    } else {
+      txnContainer.innerHTML = `
+        <div class="table-container" style="border:none;box-shadow:none">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead><tr><th>${t('member.date')}</th><th>Member</th><th>${t('member.amount')}</th><th>${t('member.type')}</th><th>${t('member.method')}</th></tr></thead>
+              <tbody>
+                ${paymentList.slice(0, 20).map(p => `
+                  <tr>
+                    <td>${formatDate(p.paid_at)}</td>
+                    <td>${sanitize(p.members?.full_name || 'Unknown')}</td>
+                    <td style="font-weight:600;color:var(--success)">${formatCurrency(p.amount)}</td>
+                    <td>${sanitize(p.payment_type)}</td>
+                    <td>${sanitize(p.payment_method) || '-'}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        ${paymentList.length > 20 ? `<p class="text-muted text-sm text-center mt-4">Showing 20 of ${paymentList.length} transactions</p>` : ''}`;
+    }
+    })();
+  </script>
+</body>
+</html>

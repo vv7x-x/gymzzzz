@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GYMOS — Premium Gym Management</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b82f6'/%3E%3Ctext x='16' y='22' text-anchor='middle' fill='white' font-size='18' font-weight='bold'%3EG%3C/text%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="landing-page">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <nav class="landing-nav" id="landingNav" aria-label="Main navigation">
+    <div class="landing-logo">
+      <i class="bi bi-dumbbell" aria-hidden="true"></i>
+      GYMOS
+    </div>
+    <div class="landing-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a href="login.html" class="landing-nav-btn">Sign In</a>
+    </div>
+    <button class="landing-mobile-btn" id="mobileMenuBtn" aria-label="Toggle mobile menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+  </nav>
+  <div class="landing-mobile-menu" id="mobileMenu">
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <a href="login.html">Sign In</a>
+  </div>
+
+  <main id="main-content" role="main">
+  <section class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-shapes" aria-hidden="true">
+      <div class="hero-shape hero-shape-1" aria-hidden="true"></div>
+      <div class="hero-shape hero-shape-2" aria-hidden="true"></div>
+      <div class="hero-shape hero-shape-3" aria-hidden="true"></div>
+    </div>
+    <div class="hero-content">
+      <div class="hero-badge">
+        <i class="bi bi-star-fill"></i>
+        Premium Gym Management Platform
+      </div>
+      <h1>
+        Run Your Gym Like<br>
+        a <span class="gradient-text">Pro</span>
+      </h1>
+      <p>
+        The all-in-one platform to manage members, subscriptions, payments, and analytics.
+        Built for modern gym owners who demand the best.
+      </p>
+      <div class="hero-buttons">
+        <a href="login.html" class="hero-btn-primary">
+          Get Started <i class="bi bi-arrow-right"></i>
+        </a>
+        <a href="#features" class="hero-btn-secondary">
+          <i class="bi bi-play-circle"></i> See How It Works
+        </a>
+      </div>
+      <div class="hero-mockup">
+        <div class="hero-mockup-img">
+          <div class="hero-mockup-placeholder">
+            <div class="mockup-dashboard">
+              <div class="mockup-topbar">
+                <div class="mockup-topbar-dots">
+                  <span class="mockup-dot r"></span>
+                  <span class="mockup-dot y"></span>
+                  <span class="mockup-dot g"></span>
+                </div>
+                <span style="font-size:var(--text-xs);color:var(--text-muted)">Dashboard Overview</span>
+                <div style="width:60px"></div>
+              </div>
+              <div class="mockup-stats">
+                <div class="mockup-stat">
+                  <span style="font-size:var(--text-xs);color:var(--text-muted)">Total Members</span>
+                  <span style="font-size:var(--text-xl);font-weight:800;letter-spacing:-0.02em">247</span>
+                  <div class="mockup-stat-bar"><div class="mockup-stat-bar-fill w-80"></div></div>
+                </div>
+                <div class="mockup-stat">
+                  <span style="font-size:var(--text-xs);color:var(--text-muted)">Active</span>
+                  <span style="font-size:var(--text-xl);font-weight:800;letter-spacing:-0.02em;color:var(--success)">198</span>
+                  <div class="mockup-stat-bar"><div class="mockup-stat-bar-fill w-60" style="background:var(--gradient-3)"></div></div>
+                </div>
+                <div class="mockup-stat">
+                  <span style="font-size:var(--text-xs);color:var(--text-muted)">Monthly Revenue</span>
+                  <span style="font-size:var(--text-xl);font-weight:800;letter-spacing:-0.02em">$12,430</span>
+                  <div class="mockup-stat-bar"><div class="mockup-stat-bar-fill w-90"></div></div>
+                </div>
+                <div class="mockup-stat">
+                  <span style="font-size:var(--text-xs);color:var(--text-muted)">Growth</span>
+                  <span style="font-size:var(--text-xl);font-weight:800;letter-spacing:-0.02em;color:var(--success)">+23%</span>
+                  <div class="mockup-stat-bar"><div class="mockup-stat-bar-fill w-40" style="background:var(--gradient-3)"></div></div>
+                </div>
+              </div>
+              <div class="mockup-chart">
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+                <div class="mockup-chart-bar"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-center" id="features">
+    <div class="section-label"><i class="bi bi-lightning"></i> Features</div>
+    <h2>Everything You Need to<br>Manage Your Gym</h2>
+    <p>Powerful tools designed for gym owners who demand the best experience for their business.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><i class="bi bi-people"></i></div>
+        <h3>Member Management</h3>
+        <p>Add, edit, and manage members with ease. Track subscriptions, attendance, and payments all in one place.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="bi bi-qr-code"></i></div>
+        <h3>QR Code Access</h3>
+        <p>Each member gets a unique QR code for quick check-ins and profile access. Scan and go.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
+        <h3>Advanced Analytics</h3>
+        <p>Track revenue, member growth, and business performance with beautiful interactive charts.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="bi bi-boxes"></i></div>
+        <h3>Plans & Services</h3>
+        <p>Create unlimited membership plans and add-on services. Custom pricing, durations, and descriptions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="bi bi-file-earmark-bar-graph"></i></div>
+        <h3>Reports & Exports</h3>
+        <p>Generate detailed reports on members, revenue, and subscriptions. Export to CSV, Excel, or PDF.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="bi bi-shield-check"></i></div>
+        <h3>Secure & Reliable</h3>
+        <p>Built on Supabase with enterprise-grade security. Your data is encrypted and always available.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-center">
+    <div class="section-label"><i class="bi bi-gear"></i> How It Works</div>
+    <h2>Get Started in Minutes</h2>
+    <p>Simple setup process that gets your gym online and running.</p>
+    <div class="steps" style="margin-top:48px">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Create Your Account</h3>
+        <p>Sign in with your email and set up your gym profile in seconds.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Add Plans & Services</h3>
+        <p>Configure your membership plans and add-on services with custom pricing.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Start Adding Members</h3>
+        <p>Register members, generate QR codes, and manage subscriptions effortlessly.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-center">
+    <div class="section-label"><i class="bi bi-grid-1x2"></i> Dashboard</div>
+    <h2>Beautiful Dashboard at Your Fingertips</h2>
+    <p>Real-time insights into every aspect of your gym business.</p>
+    <div class="showcase">
+      <div class="showcase-tabs">
+        <button class="showcase-tab active">Dashboard</button>
+        <button class="showcase-tab">Members</button>
+        <button class="showcase-tab">Revenue</button>
+        <button class="showcase-tab">Reports</button>
+      </div>
+      <div class="showcase-img">
+        <div class="showcase-placeholder">
+          <i class="bi bi-grid-1x2"></i>
+          <span>Interactive dashboard with live stats, charts, and member activity</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-section">
+    <div class="stats-section-inner">
+      <div class="stat-item">
+        <h3 id="statCount1">10K+</h3>
+        <p>Active Members</p>
+      </div>
+      <div class="stat-item">
+        <h3 id="statCount2">500+</h3>
+        <p>Gyms Powered</p>
+      </div>
+      <div class="stat-item">
+        <h3 id="statCount3">99.9%</h3>
+        <p>Uptime</p>
+      </div>
+      <div class="stat-item">
+        <h3 id="statCount4">4.9/5</h3>
+        <p>User Rating</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-center" id="pricing">
+    <div class="section-label"><i class="bi bi-tags"></i> Pricing</div>
+    <h2>Simple, Transparent Pricing</h2>
+    <p>Choose the plan that fits your gym. No hidden fees, no surprises.</p>
+    <div class="pricing-grid" style="margin-top:48px">
+      <div class="pricing-card">
+        <div class="pricing-name">1 Month</div>
+        <div class="pricing-price">
+          <span class="amount">$49</span>
+          <span class="period">/month</span>
+        </div>
+        <div class="pricing-features">
+          <div class="pricing-feature"><i class="bi bi-check"></i> Full gym access</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Locker included</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Basic equipment</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Free Wi-Fi</div>
+        </div>
+        <button class="pricing-btn">Get Started</button>
+      </div>
+      <div class="pricing-card popular">
+        <div class="pricing-name">3 Months</div>
+        <div class="pricing-price">
+          <span class="amount">$129</span>
+          <span class="period">/quarter</span>
+        </div>
+        <div class="pricing-features">
+          <div class="pricing-feature"><i class="bi bi-check"></i> Everything in 1 Month</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Personal trainer session</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Nutrition plan</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Priority support</div>
+        </div>
+        <button class="pricing-btn primary">Get Started</button>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-name">6 Months</div>
+        <div class="pricing-price">
+          <span class="amount">$199</span>
+          <span class="period">/6 months</span>
+        </div>
+        <div class="pricing-features">
+          <div class="pricing-feature"><i class="bi bi-check"></i> Everything in 3 Months</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Swimming pool access</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Sauna & steam room</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Free protein package</div>
+        </div>
+        <button class="pricing-btn">Get Started</button>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-name">12 Months</div>
+        <div class="pricing-price">
+          <span class="amount">$349</span>
+          <span class="period">/year</span>
+        </div>
+        <div class="pricing-features">
+          <div class="pricing-feature"><i class="bi bi-check"></i> Everything in 6 Months</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Unlimited guest passes</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> Premium equipment</div>
+          <div class="pricing-feature"><i class="bi bi-check"></i> VIP support 24/7</div>
+        </div>
+        <button class="pricing-btn">Get Started</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-center" id="faq">
+    <div class="section-label"><i class="bi bi-question-circle"></i> FAQ</div>
+    <h2>Frequently Asked Questions</h2>
+    <p>Got questions? We've got answers.</p>
+    <div class="faq-list" style="margin-top:48px">
+      <div class="faq-item open">
+        <button class="faq-question">
+          What is GYMOS?
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <p>GYMOS is a premium gym management platform that helps gym owners manage memberships, track payments, generate reports, and grow their business — all from a beautiful, intuitive dashboard.</p>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          How do I get started?
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <p>Simply sign in with your email address. Once logged in, you can configure your gym settings, add membership plans, and start registering members immediately.</p>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          Can I customize membership plans?
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <p>Yes! You can create unlimited membership plans with custom names, durations, prices, and descriptions. You can also add extra services like personal training, nutrition plans, and more.</p>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          Is my data secure?
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <p>Absolutely. GYMOS is built on Supabase, which provides enterprise-grade security with encrypted data storage, Row Level Security, and secure authentication.</p>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          Can I export reports?
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <p>Yes! You can generate and export detailed reports on members, revenue, and subscriptions in CSV, Excel, and PDF formats.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <div class="cta-content">
+      <h2>Ready to Transform<br>Your Gym Management?</h2>
+      <p>Join thousands of gym owners who trust GYMOS to run their business. Start managing like a pro.</p>
+      <div class="cta-buttons">
+        <a href="login.html" class="hero-btn-primary">
+          Get Started Free <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  </main>
+  <footer class="landing-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="landing-logo" style="margin-bottom:8px">
+          <i class="bi bi-dumbbell"></i>
+          GYMOS
+        </div>
+        <p>Premium gym management platform built for modern gym owners. Manage members, track revenue, and grow your business.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Blog</a>
+        <a href="#">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Security</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 GYMOS. All rights reserved.</span>
+      <span>Made with <i class="bi bi-heart-fill" style="color:var(--danger)"></i> for gym owners</span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js';
+
+    if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+      document.body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#030712;padding:40px;text-align:center;color:#f1f5f9;">
+          <div>
+            <h1 style="color:#3b82f6;margin-bottom:12px;">Setup Required</h1>
+            <p style="color:#94a3b8;max-width:400px;">
+              Please configure your Supabase credentials in <code style="background:#1e293b;padding:2px 6px;border-radius:4px;">js/config.js</code>
+            </p>
+          </div>
+        </div>`;
+    } else {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        document.querySelector('.hero-btn-primary').href = 'dashboard.html';
+        document.querySelector('.landing-nav-btn').textContent = 'Dashboard';
+        document.querySelector('.landing-nav-btn').href = 'dashboard.html';
+      }
+
+      document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+        document.getElementById('mobileMenu').classList.toggle('open');
+      });
+
+      document.querySelectorAll('.landing-mobile-menu a').forEach(a => {
+        a.addEventListener('click', () => document.getElementById('mobileMenu').classList.remove('open'));
+      });
+
+      window.addEventListener('scroll', () => {
+        const nav = document.getElementById('landingNav');
+        nav.classList.toggle('scrolled', window.scrollY > 50);
+      });
+
+      document.querySelectorAll('.faq-question').forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.parentElement.classList.toggle('open');
+        });
+      });
+
+      document.querySelectorAll('.pricing-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          window.location.href = session ? 'dashboard.html' : 'login.html';
+        });
+      });
+
+      document.querySelectorAll('.showcase-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.showcase-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+        });
+      });
+    }
+  </script>
+</body>
+</html>

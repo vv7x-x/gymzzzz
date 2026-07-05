@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan QR — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header"><div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div><span class="logo-text">GYMOS</span></div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <h2>Scan QR</h2>
+        </div>
+        <div class="topbar-right"></div>
+      </header>
+      <div class="page-content">
+        <div class="page-header">
+          <h1 data-i18n="scan.title">Scan QR Code</h1>
+          <p data-i18n="scan.subtitle">Point your camera at a member's QR code to check them in</p>
+        </div>
+
+        <div class="scanner-container">
+          <h2><i class="bi bi-qr-code-scan" aria-hidden="true"></i> QR Check-in</h2>
+          <div id="reader"></div>
+          <div id="scanResult"></div>
+          <div id="checkinResult" style="display:none"></div>
+          <button class="btn btn-ghost" id="stopScanBtn" style="display:none"><i class="bi bi-stop" aria-hidden="true"></i> Stop Scanner</button>
+          <p class="text-muted text-sm mt-4">Grant camera access when prompted to start scanning.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth } from './js/auth.js';
+    import { renderSidebar, initTopbar, pageTransition } from './js/ui.js';
+    import { showToast, sanitize } from './js/utils.js';
+    import { checkInById } from './js/attendance.js';
+    import { applyLang, t } from './js/i18n.js';
+
+    const user = await requireAuth();
+    applyLang();
+    renderSidebar('scan');
+    initTopbar(t('scan.title'));
+    pageTransition();
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+
+    let html5QrCode = null;
+    let scanning = false;
+
+    function extractMemberId(text) {
+      if (!text) return null;
+      const params = new URLSearchParams(text.split('?')[1] || '');
+      return params.get('id') || null;
+    }
+
+    function extractUUID(text) {
+      const m = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      return m ? m[0] : null;
+    }
+
+    async function handleScan(decodedText) {
+      if (!scanning) return;
+      scanning = false;
+      await html5QrCode.stop();
+      document.getElementById('stopScanBtn').style.display = 'none';
+
+      const resultEl = document.getElementById('checkinResult');
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = '<p class="text-muted">Processing...</p>';
+
+      const memberId = extractMemberId(decodedText) || extractUUID(decodedText);
+
+      if (!memberId) {
+        resultEl.innerHTML = '<div class="toast toast-error"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> Invalid QR code</div>';
+        setTimeout(() => { resultEl.style.display = 'none'; startScanner(); }, 2000);
+        return;
+      }
+
+      const result = await checkInById(memberId);
+
+      if (result.success) {
+        const name = result.member?.full_name ? sanitize(result.member.full_name) : 'Member';
+        const photo = result.member?.photo_url
+          ? sanitize(result.member.photo_url)
+          : null;
+        const photoHtml = photo
+          ? `<img src="${photo}" alt="" class="checkin-photo">`
+          : '<div class="checkin-photo-fallback"><i class="bi bi-person" aria-hidden="true"></i></div>';
+        resultEl.innerHTML = `
+          <div class="checkin-success">
+            ${photoHtml}
+            <div>
+              <strong>${name}</strong>
+              <span class="badge badge-success">Checked in</span>
+              <small>${new Date().toLocaleTimeString()}</small>
+            </div>
+          </div>`;
+        showToast(result.msg, 'success');
+      } else if (result.msg.includes('already checked in')) {
+        const name = result.member?.full_name ? sanitize(result.member.full_name) : 'Member';
+        resultEl.innerHTML = `
+          <div class="checkin-warning">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <div>
+              <strong>${name}</strong>
+              <span class="badge badge-warning">Already checked in</span>
+            </div>
+          </div>`;
+      } else {
+        resultEl.innerHTML = `<div class="toast toast-error"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> ${sanitize(result.msg)}</div>`;
+      }
+
+      setTimeout(() => { resultEl.style.display = 'none'; startScanner(); }, 2500);
+    }
+
+    async function startScanner() {
+      const resultContainer = document.getElementById('scanResult');
+      resultContainer.innerHTML = '<p class="text-muted">Scanning...</p>';
+
+      try {
+        html5QrCode = new Html5Qrcode("reader");
+        scanning = true;
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          handleScan,
+          () => {}
+        );
+
+        document.getElementById('stopScanBtn').style.display = 'inline-flex';
+        resultContainer.innerHTML = '';
+      } catch (err) {
+        resultContainer.innerHTML = '<p class="text-danger">Camera access denied or not available.</p>';
+      }
+    }
+
+    document.getElementById('stopScanBtn').addEventListener('click', async () => {
+      scanning = false;
+      if (html5QrCode) { await html5QrCode.stop(); }
+      document.getElementById('stopScanBtn').style.display = 'none';
+      document.getElementById('scanResult').innerHTML = '';
+      document.getElementById('checkinResult').style.display = 'none';
+    });
+
+    if (typeof Html5Qrcode !== 'undefined') {
+      startScanner();
+    } else {
+      document.getElementById('scanResult').innerHTML = '<p class="text-danger">QR scanner library not loaded.</p>';
+    }
+  </script>
+</body>
+</html>

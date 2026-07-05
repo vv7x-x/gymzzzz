@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header"><div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div><span class="logo-text">GYMOS</span></div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <h2>Reports</h2>
+        </div>
+        <div class="topbar-right"></div>
+      </header>
+      <div class="page-content">
+        <div class="page-header">
+          <h1 data-i18n="reports.title">Reports</h1>
+          <p data-i18n="reports.subtitle">Generate and export reports</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+          <div class="report-card" id="reportMembers">
+            <div class="report-card-icon" style="background:var(--primary-bg);color:var(--primary)"><i class="bi bi-people"></i></div>
+            <h3 data-i18n="reports.members">Members Report</h3>
+            <p>Complete list of all members with subscription details</p>
+          </div>
+          <div class="report-card" id="reportRevenue">
+            <div class="report-card-icon" style="background:var(--bg-success);color:var(--success)"><i class="bi bi-currency-dollar"></i></div>
+            <h3 data-i18n="reports.revenue">Revenue Report</h3>
+            <p>Detailed revenue breakdown by date, plan, and services</p>
+          </div>
+          <div class="report-card" id="reportSubscriptions">
+            <div class="report-card-icon" style="background:var(--bg-warning);color:var(--warning)"><i class="bi bi-boxes"></i></div>
+            <h3 data-i18n="reports.subscriptions">Subscriptions Report</h3>
+            <p>All subscriptions with status and expiry information</p>
+          </div>
+          <div class="report-card" id="reportExpiring">
+            <div class="report-card-icon" style="background:var(--bg-danger);color:var(--danger)"><i class="bi bi-clock"></i></div>
+            <h3 data-i18n="reports.expiring">Expiring Members</h3>
+            <p>Members whose subscriptions are about to expire</p>
+          </div>
+        </div>
+
+        <div style="margin-top:32px;text-align:center" id="exportSection">
+          <p class="text-muted" style="margin-bottom:16px" data-i18n="common.export">Export formats</p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-outline" id="exportCSV"><i class="bi bi-filetype-csv"></i> <span data-i18n="reports.exportCSV">Export CSV</span></button>
+            <button class="btn btn-outline" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> <span data-i18n="reports.exportExcel">Export Excel</span></button>
+            <button class="btn btn-outline" id="exportPDF"><i class="bi bi-filetype-pdf"></i> <span data-i18n="reports.exportPDF">Export PDF</span></button>
+          </div>
+        </div>
+
+        <div id="reportPreview" style="margin-top:32px"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth } from './js/auth.js';
+    import { renderSidebar, initTopbar, pageTransition } from './js/ui.js';
+    import { sanitize, formatDate, formatCurrency, getStatusLabel, getStatusBadgeClass, showToast } from './js/utils.js';
+    import { applyLang, t } from './js/i18n.js';
+
+    const user = await requireAuth();
+    applyLang();
+    renderSidebar('reports');
+    initTopbar(t('reports.title'));
+    pageTransition();
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+
+    const preview = document.getElementById('reportPreview');
+
+    async function showMembersReport() {
+      const { data: members } = await supabase.from('members').select('*, subscriptions(*)').order('created_at', { ascending: false });
+      preview.innerHTML = `
+        <div class="dash-card">
+          <h3 style="margin-bottom:16px"><i class="bi bi-people"></i> Members Report (${members?.length || 0})</h3>
+          <div class="table-container" style="border:none;box-shadow:none">
+            <div class="table-wrapper">
+              <table class="table">
+                <thead><tr><th>Name</th><th>ID</th><th>Phone</th><th>Age</th><th>Status</th><th>End Date</th></tr></thead>
+                <tbody>
+                  ${(members || []).map(m => {
+                    const sub = m.subscriptions?.[0];
+                    const s = sub ? sub.status : 'expired';
+                    return `<tr>
+                      <td>${sanitize(m.full_name)}</td>
+                      <td style="font-family:monospace;font-size:var(--text-xs)">${sanitize(m.member_id || '-')}</td>
+                      <td>${sanitize(m.phone || '-')}</td>
+                      <td>${m.age || '-'}</td>
+                      <td><span class="badge ${getStatusBadgeClass(s)}">${getStatusLabel(s)}</span></td>
+                      <td>${sub ? formatDate(sub.end_date) : '-'}</td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    async function showRevenueReport() {
+      const { data: payments } = await supabase.from('payments').select('*, members:member_id(full_name)').order('paid_at', { ascending: false });
+      const total = (payments || []).reduce((s, p) => s + Number(p.amount), 0);
+      preview.innerHTML = `
+        <div class="dash-card">
+          <h3 style="margin-bottom:16px"><i class="bi bi-currency-dollar"></i> Revenue Report — Total: ${formatCurrency(total)}</h3>
+          <div class="table-container" style="border:none;box-shadow:none">
+            <div class="table-wrapper">
+              <table class="table">
+                <thead><tr><th>Date</th><th>Member</th><th>Amount</th><th>Type</th><th>Method</th></tr></thead>
+                <tbody>
+                  ${(payments || []).slice(0, 50).map(p => `<tr>
+                    <td>${formatDate(p.paid_at)}</td>
+                    <td>${sanitize(p.members?.full_name || 'Unknown')}</td>
+                    <td style="font-weight:600">${formatCurrency(p.amount)}</td>
+                    <td>${p.payment_type}</td>
+                    <td>${p.payment_method || '-'}</td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          ${payments?.length > 50 ? `<p class="text-muted text-sm text-center mt-2">Showing 50 of ${payments.length}</p>` : ''}
+        </div>`;
+    }
+
+    async function showSubscriptionsReport() {
+      const { data: subs } = await supabase.from('subscriptions').select('*, members:member_id(full_name)').order('created_at', { ascending: false });
+      const { data: rp } = await supabase.from('plans').select('id, name');
+      const rplanMap = {}; (rp || []).forEach(p => { rplanMap[p.id] = p.name; });
+      preview.innerHTML = `
+        <div class="dash-card">
+          <h3 style="margin-bottom:16px"><i class="bi bi-boxes"></i> Subscriptions Report (${subs?.length || 0})</h3>
+          <div class="table-container" style="border:none;box-shadow:none">
+            <div class="table-wrapper">
+              <table class="table">
+                <thead><tr><th>Member</th><th>Plan</th><th>Start</th><th>End</th><th>Total</th><th>Status</th></tr></thead>
+                <tbody>
+                  ${(subs || []).map(s => `<tr>
+                    <td>${sanitize(s.members?.full_name || 'Unknown')}</td>
+                    <td>${sanitize(rplanMap[s.plan_id] || s.plan_id || '-')}</td>
+                    <td>${formatDate(s.start_date)}</td>
+                    <td>${formatDate(s.end_date)}</td>
+                    <td style="font-weight:600">${formatCurrency(s.total_price)}</td>
+                    <td><span class="badge ${getStatusBadgeClass(s.status)}">${getStatusLabel(s.status)}</span></td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    async function showExpiringReport() {
+      const { data: subs } = await supabase.from('subscriptions').select('*, members:member_id(full_name)').eq('status', 'expiring_soon').order('end_date');
+      const { data: ep } = await supabase.from('plans').select('id, name');
+      const eplanMap = {}; (ep || []).forEach(p => { eplanMap[p.id] = p.name; });
+      preview.innerHTML = `
+        <div class="dash-card">
+          <h3 style="margin-bottom:16px"><i class="bi bi-clock"></i> Expiring Members (${subs?.length || 0})</h3>
+          ${subs?.length > 0 ? `
+            <div class="table-container" style="border:none;box-shadow:none">
+              <div class="table-wrapper">
+                <table class="table">
+                  <thead><tr><th>Member</th><th>Plan</th><th>End Date</th><th>Days Left</th></tr></thead>
+                  <tbody>
+                    ${subs.map(s => {
+                      const days = Math.ceil((new Date(s.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+                      return `<tr>
+                        <td>${sanitize(s.members?.full_name || 'Unknown')}</td>
+                        <td>${sanitize(eplanMap[s.plan_id] || s.plan_id || '-')}</td>
+                        <td>${formatDate(s.end_date)}</td>
+                        <td style="font-weight:600;color:var(--warning)">${days} day${days !== 1 ? 's' : ''}</td>
+                      </tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>` : '<p class="text-muted">No members expiring soon.</p>'}
+        </div>`;
+    }
+
+    document.getElementById('reportMembers').addEventListener('click', showMembersReport);
+    document.getElementById('reportRevenue').addEventListener('click', showRevenueReport);
+    document.getElementById('reportSubscriptions').addEventListener('click', showSubscriptionsReport);
+    document.getElementById('reportExpiring').addEventListener('click', showExpiringReport);
+
+    function exportCSV(data, filename) {
+      if (!data || data.length === 0) { showToast('No data to export', 'warning'); return; }
+      const headers = Object.keys(data[0]);
+      const csv = [headers.join(','), ...data.map(row => headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${filename}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      showToast('CSV exported');
+    }
+
+    function exportExcel(data, filename) {
+      if (!data || data.length === 0) { showToast('No data to export', 'warning'); return; }
+      const headers = Object.keys(data[0]);
+      let table = `<table><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+      data.forEach(row => { table += `<tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>`; });
+      table += '</table>';
+      const html = `<html><head><meta charset="utf-8"></head><body>${table}</body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${filename}.xls`; a.click();
+      URL.revokeObjectURL(url);
+      showToast('Excel file exported');
+    }
+
+    function exportPDF(data, filename) {
+      if (!data || data.length === 0) { showToast('No data to export', 'warning'); return; }
+      const headers = Object.keys(data[0]);
+      let html = `<html><head><meta charset="utf-8"><style>body{font-family:Inter,sans-serif;padding:32px}h1{font-size:24px;margin-bottom:16px}table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #eee;font-size:13px}th{background:#f8f9fa;font-weight:600}</style></head><body><h1>${filename}</h1><table><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+      data.forEach(row => { html += `<tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>`; });
+      html += '</table></body></html>';
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      win.print();
+    }
+
+    async function getCurrentData(type) {
+      if (type === 'members') {
+        const { data: members } = await supabase.from('members').select('*, subscriptions(*)').order('created_at', { ascending: false });
+        return (members || []).map(m => {
+          const sub = m.subscriptions?.[0];
+          return { Name: m.full_name, ID: m.member_id, Phone: m.phone, Age: m.age, Weight: m.weight, Height: m.height, Gender: m.gender, Status: sub ? getStatusLabel(sub.status) : 'Expired', 'End Date': sub ? formatDate(sub.end_date) : '' };
+        });
+      } else if (type === 'revenue') {
+        const { data: payments } = await supabase.from('payments').select('*, members:member_id(full_name)').order('paid_at', { ascending: false });
+        return (payments || []).map(p => ({ Date: formatDate(p.paid_at), Member: p.members?.full_name || 'Unknown', Amount: p.amount, Type: p.payment_type, Method: p.payment_method || '' }));
+      } else if (type === 'subscriptions') {
+        const { data: subs } = await supabase.from('subscriptions').select('*, members:member_id(full_name)').order('created_at', { ascending: false });
+        const { data: rplans } = await supabase.from('plans').select('id, name');
+        const rplanMap = {}; (rplans || []).forEach(p => { rplanMap[p.id] = p.name; });
+        return (subs || []).map(s => ({ Member: s.members?.full_name || 'Unknown', Plan: rplanMap[s.plan_id] || s.plan_id, Start: formatDate(s.start_date), End: formatDate(s.end_date), Total: s.total_price, Status: getStatusLabel(s.status) }));
+      } else if (type === 'expiring') {
+        const { data: subs } = await supabase.from('subscriptions').select('*, members:member_id(full_name)').eq('status', 'expiring_soon').order('end_date');
+        const { data: eplans } = await supabase.from('plans').select('id, name');
+        const eplanMap = {}; (eplans || []).forEach(p => { eplanMap[p.id] = p.name; });
+        return (subs || []).map(s => ({ Member: s.members?.full_name || 'Unknown', Plan: eplanMap[s.plan_id] || s.plan_id, 'End Date': formatDate(s.end_date), 'Days Left': Math.ceil((new Date(s.end_date) - new Date()) / (1000 * 60 * 60 * 24)) }));
+      }
+    }
+
+    document.getElementById('exportCSV').addEventListener('click', async () => {
+      const active = document.querySelector('#reportPreview .dash-card');
+      if (!active) { showToast('Open a report first', 'warning'); return; }
+      const type = active.querySelector('h3 i').className.includes('people') ? 'members' : active.querySelector('h3 i').className.includes('currency') ? 'revenue' : active.querySelector('h3 i').className.includes('boxes') ? 'subscriptions' : 'expiring';
+      const data = await getCurrentData(type);
+      exportCSV(data, type + '-report');
+    });
+
+    document.getElementById('exportExcel').addEventListener('click', async () => {
+      const active = document.querySelector('#reportPreview .dash-card');
+      if (!active) { showToast('Open a report first', 'warning'); return; }
+      const type = active.querySelector('h3 i').className.includes('people') ? 'members' : active.querySelector('h3 i').className.includes('currency') ? 'revenue' : active.querySelector('h3 i').className.includes('boxes') ? 'subscriptions' : 'expiring';
+      const data = await getCurrentData(type);
+      exportExcel(data, type + '-report');
+    });
+
+    document.getElementById('exportPDF').addEventListener('click', async () => {
+      const active = document.querySelector('#reportPreview .dash-card');
+      if (!active) { showToast('Open a report first', 'warning'); return; }
+      const type = active.querySelector('h3 i').className.includes('people') ? 'members' : active.querySelector('h3 i').className.includes('currency') ? 'revenue' : active.querySelector('h3 i').className.includes('boxes') ? 'subscriptions' : 'expiring';
+      const data = await getCurrentData(type);
+      exportPDF(data, type.charAt(0).toUpperCase() + type.slice(1) + ' Report');
+    });
+  </script>
+</body>
+</html>

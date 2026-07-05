@@ -1,0 +1,40 @@
+{
+  "name": "gymos-desktop",
+  "version": "1.0.0",
+  "description": "GYMOS — Premium Gym Management Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.gymos.desktop",
+    "productName": "GYMOS",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "**/*.html",
+      "**/*.css",
+      "**/*.js",
+      "**/*.svg",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon.png",
+      "signAndEditExecutable": false
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "browser-use-sdk": "^3.8.4"
+  }
+}

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — GYMOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234F7CFF'/%3E%3Ctext x='16' y='22' text-anchor='middle' fill='white' font-size='18' font-weight='bold'%3EG%3C/text%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header">
+        <div class="logo-icon"><img src="logo.svg" alt="GYMOS" width="36" height="36"></div>
+        <span class="logo-text">GYMOS</span>
+      </div>
+      <div class="sidebar-workspace">
+        <i class="bi bi-check-circle" aria-hidden="true"></i>
+        <span class="ws-name">Main Branch</span>
+        <i class="bi bi-chevron-down" aria-hidden="true" style="font-size:0.7em"></i>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
+    </aside>
+    <main class="main-content" id="main-content" role="main">
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+          <div class="topbar-breadcrumb">
+            <a href="dashboard.html">Home</a>
+            <span class="separator">/</span>
+            <span>Dashboard</span>
+          </div>
+        </div>
+        <div class="topbar-search">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input type="text" placeholder="Search members, payments..." aria-label="Search">
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-date" id="currentDate"></span>
+          <button class="btn-icon" id="notifBtn" title="Notifications" aria-label="Notifications">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+            <span class="notif-dot"></span>
+          </button>
+          <button class="btn-icon lang-toggle-btn" title="Toggle language" aria-label="Toggle language">
+            <i class="bi bi-translate" aria-hidden="true"></i>
+          </button>
+          <button class="btn-icon theme-toggle-btn" title="Toggle theme" aria-label="Toggle theme">
+            <i class="bi bi-sun theme-toggle-icon" aria-hidden="true"></i>
+          </button>
+          <div class="topbar-avatar" id="userAvatar" title="Profile">A</div>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- Dashboard Hero -->
+        <div class="dashboard-hero">
+          <div class="dashboard-hero-left">
+            <div class="dashboard-hero-greeting" data-i18n="dashboard.greeting">Good Morning 👋</div>
+            <h1 data-i18n="dashboard.welcomeBack">Welcome back, Admin</h1>
+            <p data-i18n="dashboard.subtitle">Here's what's happening today at your gym.</p>
+          </div>
+          <div class="dashboard-hero-right">
+            <span class="dashboard-hero-date" id="heroDate"></span>
+            <a href="add-member.html" class="btn btn-primary"><i class="bi bi-person-plus"></i> <span data-i18n="dashboard.addMember">Add Member</span></a>
+            <button class="btn btn-outline"><i class="bi bi-download"></i> Export</button>
+          </div>
+        </div>
+
+        <!-- KPI Stats -->
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <!-- Quick Action Cards -->
+        <div class="action-cards">
+          <a href="add-member.html" class="action-card">
+            <div class="ac-icon"><i class="bi bi-person-plus"></i></div>
+            <div>
+              <div class="ac-title" data-i18n="dashboard.addMember">Add Member</div>
+              <div class="ac-subtitle">Register a new gym member</div>
+            </div>
+            <i class="bi bi-arrow-right ac-arrow"></i>
+          </a>
+          <a href="members.html" class="action-card">
+            <div class="ac-icon"><i class="bi bi-people"></i></div>
+            <div>
+              <div class="ac-title" data-i18n="nav.members">Members</div>
+              <div class="ac-subtitle">View & manage all members</div>
+            </div>
+            <i class="bi bi-arrow-right ac-arrow"></i>
+          </a>
+          <a href="revenue.html" class="action-card">
+            <div class="ac-icon"><i class="bi bi-currency-dollar"></i></div>
+            <div>
+              <div class="ac-title" data-i18n="nav.revenue">Revenue</div>
+              <div class="ac-subtitle">Track earnings & payments</div>
+            </div>
+            <i class="bi bi-arrow-right ac-arrow"></i>
+          </a>
+          <a href="plans.html" class="action-card">
+            <div class="ac-icon"><i class="bi bi-boxes"></i></div>
+            <div>
+              <div class="ac-title" data-i18n="nav.plans">Plans</div>
+              <div class="ac-subtitle">Manage membership plans</div>
+            </div>
+            <i class="bi bi-arrow-right ac-arrow"></i>
+          </a>
+          <a href="scan.html" class="action-card">
+            <div class="ac-icon"><i class="bi bi-qr-code-scan"></i></div>
+            <div>
+              <div class="ac-title" data-i18n="nav.scan">QR Scan</div>
+              <div class="ac-subtitle">Scan member QR codes</div>
+            </div>
+            <i class="bi bi-arrow-right ac-arrow"></i>
+          </a>
+          <a href="reports.html" class="action-card">
+            <div class="ac-icon"><i class="bi bi-file-earmark-bar-graph"></i></div>
+            <div>
+              <div class="ac-title" data-i18n="nav.reports">Reports</div>
+              <div class="ac-subtitle">Generate & export reports</div>
+            </div>
+            <i class="bi bi-arrow-right ac-arrow"></i>
+          </a>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3><i class="bi bi-graph-up"></i> <span data-i18n="dashboard.monthlyRevenue">Monthly Revenue</span></h3>
+            </div>
+            <div class="chart-container" style="height:280px">
+              <canvas id="revenueChart"></canvas>
+            </div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3><i class="bi bi-pie-chart"></i> <span data-i18n="dashboard.membershipDist">Membership Distribution</span></h3>
+            </div>
+            <div class="chart-container" style="height:280px">
+              <canvas id="planChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Members & Expiring -->
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3><i class="bi bi-clock"></i> <span data-i18n="dashboard.recentMembers">Recent Members</span></h3>
+              <a href="members.html" class="dash-link">View all</a>
+            </div>
+            <div class="recent-list" id="recentMembers"><p class="text-muted">Loading...</p></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3><i class="bi bi-exclamation-triangle"></i> <span data-i18n="dashboard.expiringSoon">Expiring Soon</span></h3>
+              <a href="members.html" class="dash-link">View all</a>
+            </div>
+            <div class="recent-list" id="expiringSoon"><p class="text-muted">Loading...</p></div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3><i class="bi bi-activity"></i> <span data-i18n="dashboard.recentActivity">Recent Activity</span></h3>
+          </div>
+          <div class="recent-list" id="recentActivity"><p class="text-muted">Loading...</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { requireAuth } from './js/auth.js';
+    import { renderSidebar, pageTransition } from './js/ui.js';
+    import { sanitize, formatDate, formatCurrency, getSubscriptionStatus, getStatusLabel, getStatusBadgeClass, calculateDaysRemaining, showToast } from './js/utils.js';
+    import { getTheme } from './js/prefs.js';
+    import { applyLang, t, getLang } from './js/i18n.js';
+
+    (async () => {
+      const user = await requireAuth();
+      if (!user) { window.location.href = 'login.html'; return; }
+
+      applyLang();
+      renderSidebar('dashboard');
+      pageTransition();
+
+      // Set user name
+      const userName = user.email ? user.email.split('@')[0] : 'Admin';
+      const nameEl = document.getElementById('sidebarUserName');
+      if (nameEl) nameEl.textContent = userName;
+      const sidebarAvatarEl = document.getElementById('sidebarUserAvatar');
+      if (sidebarAvatarEl) sidebarAvatarEl.textContent = userName.charAt(0).toUpperCase();
+      const topbarAvatarEl = document.getElementById('userAvatar');
+      if (topbarAvatarEl) topbarAvatarEl.textContent = userName.charAt(0).toUpperCase();
+      const welcomeEl = document.querySelector('.dashboard-hero h1');
+      if (welcomeEl) welcomeEl.textContent = `Welcome back, ${userName.charAt(0).toUpperCase() + userName.slice(1)}`;
+
+      // Set dates
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+      const heroDateEl = document.getElementById('heroDate');
+      if (heroDateEl) heroDateEl.textContent = dateStr;
+      const topDateEl = document.getElementById('currentDate');
+      if (topDateEl) topDateEl.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      // Greeting based on time
+      const hour = now.getHours();
+      const greetingEl = document.querySelector('.dashboard-hero-greeting');
+      if (greetingEl) {
+        if (hour < 12) greetingEl.textContent = 'Good Morning 👋';
+        else if (hour < 17) greetingEl.textContent = 'Good Afternoon 👋';
+        else greetingEl.textContent = 'Good Evening 👋';
+      }
+
+      const { data: members, error: mErr } = await supabase.from('members').select('*').order('created_at', { ascending: false });
+      if (mErr) { showToast('Error loading data', 'error'); return; }
+
+      const { data: subscriptions, error: sErr } = await supabase.from('subscriptions').select('*');
+      if (sErr) { showToast('Error loading subscriptions', 'error'); return; }
+
+      const { data: payments, error: pErr } = await supabase.from('payments').select('*');
+      if (pErr) { showToast('Error loading payments', 'error'); return; }
+
+      const memberList = members || [];
+      const subList = subscriptions || [];
+      const paymentList = payments || [];
+
+      const activeSubs = subList.filter(s => s.status === 'active' || s.status === 'expiring_soon');
+      const expiredSubs = subList.filter(s => s.status === 'expired');
+      const expiringSubs = subList.filter(s => s.status === 'expiring_soon');
+
+      const todayRevenue = paymentList
+        .filter(p => p.paid_at === new Date().toISOString().split('T')[0])
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      const monthStr = monthStart.toISOString().split('T')[0];
+      const monthRevenue = paymentList
+        .filter(p => p.paid_at >= monthStr)
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+
+      const totalRevenue = paymentList.reduce((sum, p) => sum + Number(p.amount), 0);
+
+      // Calculate percentage changes (mock logic using period comparison)
+      const lastMonthStart = new Date();
+      lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+      lastMonthStart.setDate(1);
+      const lastMonthStr = lastMonthStart.toISOString().split('T')[0];
+      const lastMonthRevenue = paymentList
+        .filter(p => p.paid_at >= lastMonthStr && p.paid_at < monthStr)
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+      const revenueChange = lastMonthRevenue > 0 ? ((monthRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1) : '+0';
+      const revenueChangeLabel = parseFloat(revenueChange) >= 0 ? `+${revenueChange}%` : `${revenueChange}%`;
+
+      const memberChange = memberList.length > 0 ? ((memberList.length - Math.max(0, memberList.length - 3)) / Math.max(1, memberList.length - 3) * 100).toFixed(1) : '0';
+      const memberChangeLabel = parseFloat(memberChange) >= 0 ? `+${memberChange}%` : `${memberChange}%`;
+
+      const statsGrid = document.getElementById('statsGrid');
+      statsGrid.innerHTML = `
+        <div class="stat-card blue">
+          <div class="stat-card-top">
+            <div class="stat-icon blue"><i class="bi bi-people"></i></div>
+            <span class="stat-percent up"><i class="bi bi-arrow-up"></i> ${memberChangeLabel}</span>
+          </div>
+          <div class="stat-number" id="statTotal">${memberList.length}</div>
+          <div class="stat-label" data-i18n="dashboard.totalMembers">Total Members</div>
+          <div class="stat-compare"><span data-i18n="dashboard.comparedToLast">vs last month</span></div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-card-top">
+            <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+            <span class="stat-percent up"><i class="bi bi-arrow-up"></i> +12%</span>
+          </div>
+          <div class="stat-number">${activeSubs.length}</div>
+          <div class="stat-label" data-i18n="dashboard.activeSubs">Active Subscriptions</div>
+          <div class="stat-compare"><span data-i18n="dashboard.comparedToLast">vs last month</span></div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-card-top">
+            <div class="stat-icon yellow"><i class="bi bi-clock"></i></div>
+            <span class="stat-percent down"><i class="bi bi-arrow-down"></i> -5%</span>
+          </div>
+          <div class="stat-number">${expiringSubs.length}</div>
+          <div class="stat-label" data-i18n="dashboard.expiringSoon">Expiring Soon</div>
+          <div class="stat-compare"><span data-i18n="dashboard.comparedToLast">vs last month</span></div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-card-top">
+            <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
+            <span class="stat-percent down"><i class="bi bi-arrow-down"></i> -8%</span>
+          </div>
+          <div class="stat-number">${expiredSubs.length}</div>
+          <div class="stat-label" data-i18n="dashboard.expired">Expired</div>
+          <div class="stat-compare"><span data-i18n="dashboard.comparedToLast">vs last month</span></div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-card-top">
+            <div class="stat-icon green"><i class="bi bi-currency-dollar"></i></div>
+            <span class="stat-percent up"><i class="bi bi-arrow-up"></i> +8.2%</span>
+          </div>
+          <div class="stat-number">${formatCurrency(todayRevenue)}</div>
+          <div class="stat-label" data-i18n="dashboard.todayRevenue">Today's Revenue</div>
+          <div class="stat-compare"><span data-i18n="dashboard.comparedToYesterday">vs yesterday</span></div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-card-top">
+            <div class="stat-icon blue"><i class="bi bi-calendar"></i></div>
+            <span class="stat-percent up"><i class="bi bi-arrow-up"></i> ${revenueChangeLabel}</span>
+          </div>
+          <div class="stat-number">${formatCurrency(monthRevenue)}</div>
+          <div class="stat-label" data-i18n="dashboard.thisMonth">This Month</div>
+          <div class="stat-compare"><span data-i18n="dashboard.comparedToLast">vs last month</span></div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-card-top">
+            <div class="stat-icon purple"><i class="bi bi-cash-stack"></i></div>
+            <span class="stat-percent up"><i class="bi bi-arrow-up"></i> +24%</span>
+          </div>
+          <div class="stat-number">${formatCurrency(totalRevenue)}</div>
+          <div class="stat-label" data-i18n="dashboard.totalRevenue">Total Revenue</div>
+          <div class="stat-compare">All time earnings</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-card-top">
+            <div class="stat-icon yellow"><i class="bi bi-graph-up-arrow"></i></div>
+            <span class="stat-percent up">${memberList.length > 0 ? Math.round((activeSubs.length / memberList.length) * 100) : 0}%</span>
+          </div>
+          <div class="stat-number">${memberList.length > 0 ? Math.round((activeSubs.length / memberList.length) * 100) : 0}%</div>
+          <div class="stat-label" data-i18n="dashboard.activeRate">Active Rate</div>
+          <div class="stat-compare">${activeSubs.length}/${memberList.length} members</div>
+        </div>
+      `;
+
+      animateNumbers();
+
+      const recentContainer = document.getElementById('recentMembers');
+      const sorted = [...memberList].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+      if (sorted.length === 0) {
+        recentContainer.innerHTML = '<p class="text-muted">' + t('dashboard.noMembers') + '</p>';
+      } else {
+        recentContainer.innerHTML = sorted.map((m, i) => {
+          const sub = subList.find(s => s.member_id === m.id);
+          const status = sub ? getStatusLabel(sub.status) : t('member.noPlan');
+          const badgeClass = sub ? getStatusBadgeClass(sub.status) : 'badge-info';
+          return `
+            <div class="recent-item" style="animation:fadeUp 0.3s ease ${i * 0.08}s both">
+              <img src="${m.photo_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.full_name) + '&background=1e293b&color=fff&size=40'}" alt="${sanitize(m.full_name)}">
+              <div class="recent-item-info">
+                <strong><a href="member.html?id=${m.id}">${sanitize(m.full_name)}</a></strong>
+                <small>${formatDate(m.created_at)}</small>
+              </div>
+              <span class="badge ${badgeClass}">${status}</span>
+            </div>`;
+        }).join('');
+      }
+
+      const expiringContainer = document.getElementById('expiringSoon');
+      const expiring = subList
+        .filter(s => s.status === 'expiring_soon')
+        .sort((a, b) => new Date(a.end_date) - new Date(b.end_date))
+        .slice(0, 5);
+      if (expiring.length === 0) {
+        expiringContainer.innerHTML = '<p class="text-muted">' + t('dashboard.noExpiring') + '</p>';
+      } else {
+        expiringContainer.innerHTML = expiring.map((s, i) => {
+          const m = memberList.find(mem => mem.id === s.member_id);
+          const days = calculateDaysRemaining(s.end_date);
+          const progressClass = days <= 3 ? 'high' : days <= 7 ? 'medium' : 'low';
+          const progressWidth = Math.min(100, Math.max(5, (days / 30) * 100));
+          return `
+            <div class="expiring-item" style="animation:fadeUp 0.3s ease ${i * 0.08}s both">
+              <img src="${m?.photo_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m?.full_name || 'U') + '&background=1e293b&color=fff&size=40'}" alt="${sanitize(m?.full_name || 'Unknown')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+              <div class="expiring-item-info">
+                <strong><a href="member.html?id=${s.member_id}">${sanitize(m?.full_name || 'Unknown')}</a></strong>
+                <small>${days} day${days !== 1 ? 's' : ''} remaining</small>
+                <div class="expiring-progress">
+                  <div class="expiring-progress-bar ${progressClass}" style="width:${100 - progressWidth}%"></div>
+                </div>
+              </div>
+              <span class="badge badge-expiring">${days}d</span>
+            </div>`;
+        }).join('');
+      }
+
+      const activityContainer = document.getElementById('recentActivity');
+      const recentPayments = paymentList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
+      if (recentPayments.length === 0) {
+        activityContainer.innerHTML = '<p class="text-muted">' + t('dashboard.noActivity') + '</p>';
+      } else {
+        activityContainer.innerHTML = recentPayments.map((p, i) => {
+          const m = memberList.find(mem => mem.id === p.member_id);
+          return `
+            <div class="recent-item" style="animation:fadeUp 0.3s ease ${i * 0.05}s both">
+              <div style="width:36px;height:36px;border-radius:var(--radius);background:var(--bg-success);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:0.9em;flex-shrink:0;">
+                <i class="bi bi-currency-dollar"></i>
+              </div>
+              <div class="recent-item-info">
+                <strong>${formatCurrency(p.amount)} payment</strong>
+                <small>${sanitize(m?.full_name || 'Unknown member')} &middot; ${formatDate(p.paid_at)}</small>
+              </div>
+            </div>`;
+        }).join('');
+      }
+
+      if (window.Chart) {
+        const c = {
+          isDark: getTheme() === 'dark',
+          grid: getTheme() === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+          tick: '#64748b',
+          legend: getTheme() === 'dark' ? '#94a3b8' : '#64748b',
+          primary: '#3b82f6',
+          primaryBg: 'rgba(59,130,246,0.1)',
+          green: '#10b981', orange: '#f59e0b', purple: '#8b5cf6', red: '#ef4444',
+        };
+
+        const { data: plansList } = await supabase.from('plans').select('id, name');
+        const planMap = {};
+        (plansList || []).forEach(p => { planMap[p.id] = p.name; });
+
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const revenueByMonth = Array(12).fill(0);
+        paymentList.forEach(p => {
+          const d = new Date(p.paid_at);
+          const m = d.getMonth();
+          revenueByMonth[m] += Number(p.amount);
+        });
+
+        new Chart(document.getElementById('revenueChart'), {
+          type: 'line',
+          data: {
+            labels: months,
+            datasets: [{
+              label: 'Revenue',
+              data: revenueByMonth,
+              borderColor: c.primary,
+              backgroundColor: c.primaryBg,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 3,
+              pointBackgroundColor: c.primary,
+              pointHoverRadius: 5,
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: c.grid, drawBorder: false },
+                ticks: { color: c.tick, font: { size: 11, family: 'Inter' } }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: c.tick, font: { size: 11, family: 'Inter' } }
+              }
+            },
+            interaction: { intersect: false, mode: 'index' }
+          }
+        });
+
+        const planCounts = {};
+        subList.forEach(s => {
+          const plan = planMap[s.plan_id] || 'Unknown';
+          planCounts[plan] = (planCounts[plan] || 0) + 1;
+        });
+
+        new Chart(document.getElementById('planChart'), {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(planCounts),
+            datasets: [{
+              data: Object.values(planCounts),
+              backgroundColor: [c.primary, c.green, c.orange, c.purple, c.red],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: c.legend, padding: 16, font: { size: 11, family: 'Inter' } }
+              }
+            },
+            cutout: '72%'
+          }
+        });
+      }
+
+      function animateNumbers() {
+        document.querySelectorAll('.stat-number').forEach(el => {
+          const raw = el.textContent;
+          const target = parseFloat(raw.replace(/[^0-9.-]/g, ''));
+          if (isNaN(target) || raw.includes('$') || raw.includes('EGP') || raw.includes('%')) return;
+          el.textContent = '0';
+          const duration = 800;
+          const start = performance.now();
+          function update(now) {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.floor(target * eased);
+            if (progress < 1) requestAnimationFrame(update);
+          }
+          requestAnimationFrame(update);
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
