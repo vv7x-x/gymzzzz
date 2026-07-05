@@ -34,17 +34,23 @@ export function initMobileToggle() {
   const toggle = document.getElementById('mobileToggle');
   const sidebar = document.getElementById('sidebar');
   if (!toggle || !sidebar) return;
+  if (toggle.dataset.mobileInit) return;
+  toggle.dataset.mobileInit = '1';
+
+  let overlay = document.querySelector('.sidebar-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(overlay);
+  }
+  overlay.addEventListener('click', function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+  });
 
   toggle.addEventListener('click', () => {
     sidebar.classList.toggle('open');
-    let overlay = document.querySelector('.sidebar-overlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.className = 'sidebar-overlay';
-      overlay.setAttribute('aria-hidden', 'true');
-      overlay.addEventListener('click', () => sidebar.classList.remove('open'));
-      document.body.appendChild(overlay);
-    }
     overlay.classList.toggle('open');
   });
 }
@@ -87,7 +93,6 @@ export function initLogout() {
 export function initTopbar(title) {
   const h2 = document.querySelector('.topbar-left h2');
   if (h2 && title) h2.textContent = title;
-  initMobileToggle();
 }
 
 export function initThemeToggle() {

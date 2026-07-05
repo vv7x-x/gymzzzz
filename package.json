@@ -33,8 +33,5 @@
   "devDependencies": {
     "electron": "^28.3.3",
     "electron-builder": "^24.13.3"
-  },
-  "dependencies": {
-    "browser-use-sdk": "^3.8.4"
   }
 }
